@@ -1,4 +1,4 @@
-##### rtr-cod (EcoRouter) #####
+## rtr-cod (EcoRouter)
 ! Входим в привилегированный режим
 enable
 configure terminal
@@ -182,7 +182,7 @@ exit
 write
 
 
-##### sw1-cod (Alt Linux) ######
+## sw1-cod (Alt Linux)
 # [cite_start]1. Задаем имя хоста [cite: 96]
 hostnamectl set-hostname sw1-cod.cod.ssa2026.region
 
@@ -245,7 +245,7 @@ systemctl restart network
 ip a
 
 
-##### sw2-cod (Alt Linux) #####
+## sw2-cod (Alt Linux)
 # 1. Имя хоста [cite: 95]
 hostnamectl set-hostname sw2-cod.cod.ssa2026.region
 
@@ -283,7 +283,7 @@ echo "HOST=bond0" >> /etc/net/ifaces/bond0.400/options
 systemctl restart network
 
 
-##### srv1-cod (RADIUS и DNS) #####
+## srv1-cod (RADIUS и DNS)
 # Пример настройки интерфейса ens18 (проверь имя через ip a)
 mkdir -p /etc/net/ifaces/ens18
 echo "TYPE=eth" > /etc/net/ifaces/ens18/options
@@ -479,7 +479,7 @@ nano /etc/exports
 exportfs -ra
 systemctl enable --now nfs-server
 
-###### srv2-cod (Alt Linux) #####
+## srv2-cod (Alt Linux)
 # 1. Установка
 apt-get install targetcli
 systemctl enable --now target
