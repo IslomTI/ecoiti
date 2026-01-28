@@ -1,4 +1,4 @@
-## rtr-cod (EcoRouter)
+# rtr-cod (EcoRouter)
 ! Входим в привилегированный режим
 enable
 configure terminal
@@ -76,7 +76,7 @@ exit
 write
 
 
-### после srv1
+# после srv1
 enable
 conf t
 
@@ -109,7 +109,8 @@ exit
 
 ! Сохраняем
 write
-##### rtr-a (EcoRouter) #####
+
+# rtr-a (EcoRouter)
 enable
 configure terminal
 
@@ -182,74 +183,74 @@ exit
 write
 
 
-## sw1-cod (Alt Linux)
-# [cite_start]1. Задаем имя хоста [cite: 96]
+# sw1-cod (Alt Linux)
+! [cite_start]1. Задаем имя хоста [cite: 96]
 hostnamectl set-hostname sw1-cod.cod.ssa2026.region
 
-# [cite_start]2. Создаем Агрегацию (Bond0) для sw1-sw2 [cite: 115-117]
-# Создаем папку интерфейса
+! [cite_start]2. Создаем Агрегацию (Bond0) для sw1-sw2 [cite: 115-117]
+! Создаем папку интерфейса
 mkdir -p /etc/net/ifaces/bond0
-# [cite_start]Описываем настройки: LACP нет в задании явно, но сказано "active-backup" [cite: 117]
+! [cite_start]Описываем настройки: LACP нет в задании явно, но сказано "active-backup" [cite: 117]
 echo "TYPE=bond" > /etc/net/ifaces/bond0/options
 echo "bond-mode 1" >> /etc/net/ifaces/bond0/options
 echo "bond-miimon 100" >> /etc/net/ifaces/bond0/options
-# Указываем, какие физические порты входят в бонд
+! Указываем, какие физические порты входят в бонд
 echo "ens4" > /etc/net/ifaces/bond0/ports
 echo "ens5" >> /etc/net/ifaces/bond0/ports
 # Отключаем IP на самом бонде (он будет транком)
 echo "BOOTPROTO=static" > /etc/net/ifaces/bond0/ipv4address
 
-# ВАЖНО: Удаляем настройки с физических портов ens4/ens5, если они есть
+! ВАЖНО: Удаляем настройки с физических портов ens4/ens5, если они есть
 rm -rf /etc/net/ifaces/ens4
 rm -rf /etc/net/ifaces/ens5
 
-# [cite_start]3. Настройка VLAN управления (VLAN 300) [cite: 111]
-# Интерфейс будет называться vlan300
+! [cite_start]3. Настройка VLAN управления (VLAN 300) [cite: 111]
+! Интерфейс будет называться vlan300
 mkdir -p /etc/net/ifaces/vlan300
 echo "TYPE=vlan" > /etc/net/ifaces/vlan300/options
 echo "VID=300" >> /etc/net/ifaces/vlan300/options
-# VLAN "сидит" на интерфейсе bond0 (или на bridge, если мы делаем мост)
-# Для простоты управления вешаем на bond0
+! VLAN "сидит" на интерфейсе bond0 (или на bridge, если мы делаем мост)
+! Для простоты управления вешаем на bond0
 echo "HOST=bond0" >> /etc/net/ifaces/vlan300/options
-# Задаем IP управления
+! Задаем IP управления
 echo "10.10.30.11/24" > /etc/net/ifaces/vlan300/ipv4address
 echo "default via 10.10.30.1" > /etc/net/ifaces/vlan300/ipv4route
 
-# 4. Настройка остальных VLAN (Транки)
-# В Linux, чтобы он работал как свитч и пропускал трафик сквозь себя,
-# нужно создавать Bridge (мост) для каждого VLAN или один общий Bridge с vlan-filtering.
-# Самый простой способ для новичка - Bridge для каждого VLAN.
+! 4. Настройка остальных VLAN (Транки)
+! В Linux, чтобы он работал как свитч и пропускал трафик сквозь себя,
+! нужно создавать Bridge (мост) для каждого VLAN или один общий Bridge с vlan-filtering.
+! Самый простой способ для новичка - Bridge для каждого VLAN.
 
-# Пример для VLAN 100 (Servers):
-# Создаем VLAN интерфейс на входящем порту (bond0)
+! Пример для VLAN 100 (Servers):
+! Создаем VLAN интерфейс на входящем порту (bond0)
 mkdir -p /etc/net/ifaces/bond0.100
 echo "TYPE=vlan" > /etc/net/ifaces/bond0.100/options
 echo "VID=100" >> /etc/net/ifaces/bond0.100/options
 echo "HOST=bond0" >> /etc/net/ifaces/bond0.100/options
 
-# Создаем VLAN интерфейс на порту, куда подключены серверы (например ens6)
+! Создаем VLAN интерфейс на порту, куда подключены серверы (например ens6)
 mkdir -p /etc/net/ifaces/ens6.100
 echo "TYPE=vlan" > /etc/net/ifaces/ens6.100/options
 echo "VID=100" >> /etc/net/ifaces/ens6.100/options
 echo "HOST=ens6" >> /etc/net/ifaces/ens6.100/options
 
-# Объединяем их в мост br100
+! Объединяем их в мост br100
 mkdir -p /etc/net/ifaces/br100
 echo "TYPE=bri" > /etc/net/ifaces/br100/options
 echo "bond0.100" > /etc/net/ifaces/br100/ports
 echo "ens6.100" >> /etc/net/ifaces/br100/ports
 
-# 5. Применяем настройки
+! 5. Применяем настройки
 systemctl restart network
-# Проверяем
+! Проверяем
 ip a
 
 
-## sw2-cod (Alt Linux)
-# 1. Имя хоста [cite: 95]
+# sw2-cod (Alt Linux)
+! 1. Имя хоста [cite: 95]
 hostnamectl set-hostname sw2-cod.cod.ssa2026.region
 
-# 2. Агрегация (Bond0) - Active-Backup [cite: 115-117]
+! 2. Агрегация (Bond0) - Active-Backup [cite: 115-117]
 mkdir -p /etc/net/ifaces/bond0
 echo "TYPE=bond" > /etc/net/ifaces/bond0/options
 echo "bond-mode 1" >> /etc/net/ifaces/bond0/options
@@ -258,49 +259,49 @@ echo "ens4" > /etc/net/ifaces/bond0/ports
 echo "ens5" >> /etc/net/ifaces/bond0/ports
 echo "BOOTPROTO=static" > /etc/net/ifaces/bond0/ipv4address
 
-# Удаляем следы старых интерфейсов
+! Удаляем следы старых интерфейсов
 rm -rf /etc/net/ifaces/ens4
 rm -rf /etc/net/ifaces/ens5
 
-# 3. VLAN управления (VLAN 300) [cite: 111]
+! 3. VLAN управления (VLAN 300) [cite: 111]
 mkdir -p /etc/net/ifaces/vlan300
 echo "TYPE=vlan" > /etc/net/ifaces/vlan300/options
 echo "VID=300" >> /etc/net/ifaces/vlan300/options
 echo "HOST=bond0" >> /etc/net/ifaces/vlan300/options
-# IP адрес управления (другой, не как у sw1!)
+! IP адрес управления (другой, не как у sw1!)
 echo "10.10.30.12/24" > /etc/net/ifaces/vlan300/ipv4address
-# Шлюз по умолчанию нужен только один на устройство, если уже прописал - ок
+! Шлюз по умолчанию нужен только один на устройство, если уже прописал - ок
 echo "default via 10.10.30.1" > /etc/net/ifaces/vlan300/ipv4route
 
-# 4. Проброс VLAN (Транки) для клиентов
-# Например, VLAN 400 (CLI)
+! 4. Проброс VLAN (Транки) для клиентов
+! Например, VLAN 400 (CLI)
 mkdir -p /etc/net/ifaces/bond0.400
 echo "TYPE=vlan" > /etc/net/ifaces/bond0.400/options
 echo "VID=400" >> /etc/net/ifaces/bond0.400/options
 echo "HOST=bond0" >> /etc/net/ifaces/bond0.400/options
 
-# Применяем
+! Применяем
 systemctl restart network
 
 
-## srv1-cod (RADIUS и DNS)
-# Пример настройки интерфейса ens18 (проверь имя через ip a)
+# srv1-cod (RADIUS и DNS)
+! Пример настройки интерфейса ens18 (проверь имя через ip a)
 mkdir -p /etc/net/ifaces/ens18
 echo "TYPE=eth" > /etc/net/ifaces/ens18/options
-# Сервер должен быть в VLAN 100. В Linux можно настроить vlan-интерфейс
-# Но часто серверы подключают в порт свитча, который УЖЕ настроен в access vlan 100.
-# Если так, то просто ставим IP:
+! Сервер должен быть в VLAN 100. В Linux можно настроить vlan-интерфейс
+! Но часто серверы подключают в порт свитча, который УЖЕ настроен в access vlan 100.
+! Если так, то просто ставим IP:
 echo "192.168.100.10/24" > /etc/net/ifaces/ens18/ipv4address
 echo "default via 192.168.100.1" > /etc/net/ifaces/ens18/ipv4route
 systemctl restart network
 
-# 1. Установка
+! 1. Установка
 apt-get update
 apt-get install freeradius freeradius-utils
 
-# 2. Добавляем клиентов (роутер и свитчи)
-# Редактируем файл /etc/raddb/clients.conf (путь может отличаться: /etc/freeradius/3.0/clients.conf)
-# Добавь в конец файла:
+! 2. Добавляем клиентов (роутер и свитчи)
+! Редактируем файл /etc/raddb/clients.conf (путь может отличаться: /etc/freeradius/3.0/clients.conf)
+! Добавь в конец файла:
 
 client rtr-cod {
     ipaddr = 10.10.30.1  # IP роутера (mgmt vlan) или шлюза
@@ -311,34 +312,33 @@ client sw1-cod {
     ipaddr = 10.10.30.11
     secret = radius_secret
 }
-# ... и так далее для sw2
+! ... и так далее для sw2
 
-# 3. Добавляем пользователя netuser
-# Редактируем файл /etc/raddb/users (или mods-config/files/authorize)
-# Добавь в начало файла (перед дефолтными правилами):
+! 3. Добавляем пользователя netuser
+! Редактируем файл /etc/raddb/users (или mods-config/files/authorize)
+! Добавь в начало файла (перед дефолтными правилами):
 
 netuser Cleartext-Password := "P@ssw0rd"
        Service-Type = Administrative-User
 
-# 4. Запуск
+! 4. Запуск
 systemctl enable --now radiusd (или freeradius)
 
-# 5. Проверка локально (тест)
+! 5. Проверка локально (тест)
 radtest netuser P@ssw0rd localhost 0 testing123
-# Если получил "Access-Accept" - сервер работает!
+! Если получил "Access-Accept" - сервер работает!
 
-
-###
-# 1. Установка пакетов
+///
+! 1. Установка пакетов
 apt-get update
 apt-get install bind bind-utils
 
-# 2. Настройка основного конфига
-# Открываем /etc/bind/options.conf (или named.conf в зависимости от версии)
-# Нужно разрешить слушать всех и пересылать запросы на 100.100.100.100
+! 2. Настройка основного конфига
+! Открываем /etc/bind/options.conf (или named.conf в зависимости от версии)
+! Нужно разрешить слушать всех и пересылать запросы на 100.100.100.100
 nano /etc/bind/options.conf
 
-# Внутри блока options { ... } меняем/добавляем:
+! Внутри блока options { ... } меняем/добавляем:
     listen-on { any; };           # Слушать на всех интерфейсах
     allow-query { any; };         # Разрешить запросы от всех
     recursion yes;                # Разрешить рекурсию
@@ -346,8 +346,8 @@ nano /etc/bind/options.conf
     forwarders { 100.100.100.100; };
     dnssec-validation no;         # Отключаем для простоты
 
-# 3. Описание зон
-# Открываем /etc/bind/local.conf (или named.conf) и добавляем:
+! 3. Описание зон
+! Открываем /etc/bind/local.conf (или named.conf) и добавляем:
 nano /etc/bind/local.conf
 
 zone "cod.ssa2026.region" IN {
@@ -355,14 +355,14 @@ zone "cod.ssa2026.region" IN {
     file "/var/lib/bind/cod.ssa2026.region.db";
 };
 
-# Обратная зона для сети 192.168.100.x (если серверы там)
+! Обратная зона для сети 192.168.100.x (если серверы там)
 zone "100.168.192.in-addr.arpa" IN {
     type master;
     file "/var/lib/bind/100.168.192.db";
 };
 
-# 4. Создание файла прямой зоны
-# Создаем файл /var/lib/bind/cod.ssa2026.region.db
+! 4. Создание файла прямой зоны
+! Создаем файл /var/lib/bind/cod.ssa2026.region.db
 nano /var/lib/bind/cod.ssa2026.region.db
 
 $TTL 86400
@@ -388,25 +388,25 @@ admin-cod IN A       10.10.30.100
 ; Добавь сюда monitoring (для Zabbix)
 monitoring IN CNAME  srv1-cod
 
-# 5. Проверка и запуск
+! 5. Проверка и запуск
 named-checkconf
 systemctl enable --now bind
-# Проверка: dig @localhost srv1-cod.cod.ssa2026.region
+! Проверка: dig @localhost srv1-cod.cod.ssa2026.region
 
 
-# 1. Создаем структуру папок (строго по заданию /var/ca) [cite: 161]
+! 1. Создаем структуру папок (строго по заданию /var/ca) [cite: 161]
 mkdir -p /var/ca/{certs,crl,newcerts,private}
 chmod 700 /var/ca/private
 touch /var/ca/index.txt
 echo 1000 > /var/ca/serial
 
-# 2. Копируем конфиг OpenSSL
+! 2. Копируем конфиг OpenSSL
 cp /etc/ssl/openssl.cnf /var/ca/openssl.cnf
 
-# 3. Редактируем конфиг
+! 3. Редактируем конфиг
 nano /var/ca/openssl.cnf
 
-# Ищем секцию [ CA_default ] и меняем пути:
+! Ищем секцию [ CA_default ] и меняем пути:
 dir             = /var/ca
 certificate     = $dir/ca.crt
 private_key     = $dir/private/ca.key
@@ -415,91 +415,91 @@ database        = $dir/index.txt
 serial          = $dir/serial
 default_days    = 1825    ; Пункт 157: Срок жизни 5 лет
 
-# В секции [ req_distinguished_name ] можно задать дефолты:
+! В секции [ req_distinguished_name ] можно задать дефолты:
 countryName_default             = RU        ; Пункт 158
 0.organizationName_default      = IRPO      ; Пункт 159
 commonName_default              = ssa2026   ; Пункт 160
 
-# 4. Генерируем корневой ключ и сертификат
+! 4. Генерируем корневой ключ и сертификат
 cd /var/ca
-# Генерируем ключ (пароль попросят ввести - запомни его!)
+! Генерируем ключ (пароль попросят ввести - запомни его!)
 openssl genrsa -out private/ca.key 4096
 
-# Создаем сам сертификат (Self-signed)
+! Создаем сам сертификат (Self-signed)
 openssl req -new -x509 -key private/ca.key -out ca.crt -days 1825 -config openssl.cnf
-# На вопросы отвечай: RU, IRPO, ssa2026 (Common Name)
+! На вопросы отвечай: RU, IRPO, ssa2026 (Common Name)
 
-# 5. Распространение доверия (чтобы сам сервер верил своему CA)
+! 5. Распространение доверия (чтобы сам сервер верил своему CA)
 cp ca.crt /usr/share/ca-certificates/ssa2026.crt
 update-ca-trust
 
 
-### после srv2
-# 1. Установка iSCSI инициатора
+! после srv2
+! 1. Установка iSCSI инициатора
 apt-get install open-iscsi lvm2 nfs-utils
 
-# 2. Задаем имя инициатора (Client Name) [cite: 180]
+! 2. Задаем имя инициатора (Client Name) [cite: 180]
 echo "InitiatorName=iqn.2026-01.region.ssa2026.cod:iscsi" > /etc/iscsi/initiatorname.iscsi
 systemctl restart iscsid
 
-# 3. Подключение к таргету
-# IP адрес srv2-cod в сети DATA (VLAN 200). Допустим 192.168.200.11
+! 3. Подключение к таргету
+! IP адрес srv2-cod в сети DATA (VLAN 200). Допустим 192.168.200.11
 iscsiadm -m discovery -t st -p 192.168.200.11
 iscsiadm -m node --login
 
-# Проверка: lsblk (должен появиться новый диск, например sdb)
+! Проверка: lsblk (должен появиться новый диск, например sdb)
 
-# 4. Настройка LVM и файловой системы [cite: 183-187]
-# Создаем физический том
+! 4. Настройка LVM и файловой системы [cite: 183-187]
+! Создаем физический том
 pvcreate /dev/sdb
-# Создаем группу томов VG
+! Создаем группу томов VG
 vgcreate VG /dev/sdb
-# Создаем логический том DATA на 100% места
+! Создаем логический том DATA на 100% места
 lvcreate -l 100%FREE -n DATA VG
-# Форматируем в XFS
+! Форматируем в XFS
 mkfs.xfs /dev/VG/DATA
 
-# 5. Монтирование [cite: 188-189]
+! 5. Монтирование [cite: 188-189]
 mkdir -p /opt/data
-# Узнаем UUID диска
+! Узнаем UUID диска
 blkid /dev/VG/DATA
-# Добавляем в /etc/fstab (замени UUID на свой):
-# UUID="xxxx-xxxx" /opt/data xfs _netdev 0 0
+! Добавляем в /etc/fstab (замени UUID на свой):
+! UUID="xxxx-xxxx" /opt/data xfs _netdev 0 0
 mount -a
 
-# 6. Настройка NFS сервера [cite: 190-192]
-# Редактируем /etc/exports
+! 6. Настройка NFS сервера [cite: 190-192]
+! Редактируем /etc/exports
 nano /etc/exports
 
-# Добавляем строку:
-# /opt/data   10.10.30.0/24(rw,sync,no_root_squash)
-# Где 10.10.30.0/24 - это сеть MGMT-COD
+! Добавляем строку:
+! /opt/data   10.10.30.0/24(rw,sync,no_root_squash)
+! Где 10.10.30.0/24 - это сеть MGMT-COD
 
-# Применяем
+! Применяем
 exportfs -ra
 systemctl enable --now nfs-server
 
-## srv2-cod (Alt Linux)
-# 1. Установка
+# srv2-cod (Alt Linux)
+! 1. Установка
 apt-get install targetcli
 systemctl enable --now target
 
-# 2. Настройка через консоль targetcli
+! 2. Настройка через консоль targetcli
 targetcli
 
-# Внутри консоли вводим команды:
-# Создаем диск-хранилище
+! Внутри консоли вводим команды:
+! Создаем диск-хранилище
 /backstores/block create name=disk1 dev=/dev/sdb
 
-# Создаем цель (Target) с именем по заданию (месяц 01)
+! Создаем цель (Target) с именем по заданию (месяц 01)
 /iscsi create iqn.2026-01.region.ssa2026.cod:data.target
 
-# Создаем ACL (разрешаем доступ клиенту srv1)
-# Мы назовем клиента просто "iscsi", как просят в задании для srv1
+! Создаем ACL (разрешаем доступ клиенту srv1)
+! Мы назовем клиента просто "iscsi", как просят в задании для srv1
 /iscsi/iqn.2026-01.region.ssa2026.cod:data.target/tpg1/acls create iqn.2026-01.region.ssa2026.cod:iscsi
 
-# Привязываем диск к цели
+! Привязываем диск к цели
 /iscsi/iqn.2026-01.region.ssa2026.cod:data.target/tpg1/luns create /backstores/block/disk1
 
-# Сохраняем и выходим
+! Сохраняем и выходим
 exit
