@@ -3,54 +3,69 @@
 enable
 configure terminal
 
-#### 1. Имя устройства (FQDN по заданию [cite: 96-97])
+1 Имя устройства
 
     hostname rtr-cod
     domain-name cod.ssa2026.region
 
-! 2. Настройка внешнего интерфейса (к ISP)
-! Смотрим таблицу 83: IP 178.207.179.4/29
-interface gigabitethernet 0/0
- description WAN_TO_ISP
- ip address 178.207.179.4 255.255.255.248
- no shutdown
-exit
+2 Настройка внешнего интерфейса (к ISP)
+Смотрим таблицу 83: IP 178.207.179.4/29
 
-! 3. Настройка внутреннего интерфейса (к Firewall fw-cod)
-! Адрес придумываем из приватной сети, например 10.0.1.1/30
-interface gigabitethernet 0/1
- description LAN_TO_FW
- ip address 10.0.1.1 255.255.255.252
- no shutdown
-exit
+    interface gigabitethernet 0/0
+     description WAN_TO_ISP
+     ip address 178.207.179.4 255.255.255.248
+     no shutdown
+    exit
 
-! 4. [cite_start]Настройка BGP с провайдером (AS 64500 <-> AS 31133) [cite: 83, 127]
-router bgp 64500
- bgp router-id 178.207.179.4
- ! Указываем соседа (шлюз провайдера)
- neighbor 178.207.179.1 remote-as 31133
- neighbor 178.207.179.1 description ISP_UPLINK
+3 Настройка внутреннего интерфейса (к Firewall fw-cod)
+Адрес придумываем из приватной сети, например 10.0.1.1/30
+
+    interface gigabitethernet 0/1
+     description LAN_TO_FW
+     ip address 10.0.1.1 255.255.255.252
+     no shutdown
+    exit
+
+4 Настройка BGP с провайдером (AS 64500 <-> AS 31133)
+
+    router bgp 64500
+     bgp router-id 178.207.179.4
+     
+Указываем соседа (шлюз провайдера)
  
- address-family ipv4
-  neighbor 178.207.179.1 activate
-  ! Запрет анонса внутренних сетей (пункт 129) - не добавляем network 10.x.x.x
-  ! Но свой внешний адрес анонсировать нужно (пункт 86)
-  network 178.207.179.0 mask 255.255.255.248
-  ! Ждем маршрут по умолчанию от провайдера (пункт 130)
-  ! Команду ниже вводим, если авто-получение не сработало (зависит от версии ПО)
-  ! neighbor 178.207.179.1 default-originate 
- exit
-exit
+     neighbor 178.207.179.1 remote-as 31133
+     neighbor 178.207.179.1 description ISP_UPLINK
+ 
+     address-family ipv4
+      neighbor 178.207.179.1 activate
+      
+Запрет анонса внутренних сетей (пункт 129) - не добавляем network 10.x.x.x
+Но свой внешний адрес анонсировать нужно (пункт 86)
+  
+      network 178.207.179.0 mask 255.255.255.248
+      
+Ждем маршрут по умолчанию от провайдера (пункт 130)
+Команду ниже вводим, если авто-получение не сработало (зависит от версии ПО)
+neighbor 178.207.179.1 default-originate 
 
-! 5. [cite_start]Настройка GRE туннеля до офиса (rtr-a) [cite: 123-125]
-interface Tunnel1
- ! IP адрес туннеля (сеть 10.10.10.0/24, мин. маска /30 -> .1 и .2)
- ip address 10.10.10.1 255.255.255.252
- ! От кого строим (наш внешний IP)
- tunnel source 178.207.179.4
- ! К кому строим (внешний IP rtr-a из таблицы 83)
- tunnel destination 178.207.179.28
- tunnel mode gre ip
+     exit
+    exit
+
+5 Настройка GRE туннеля до офиса (rtr-a)
+
+    interface Tunnel1
+    
+ IP адрес туннеля (сеть 10.10.10.0/24, мин. маска /30 -> .1 и .2)
+ 
+     ip address 10.10.10.1 255.255.255.252
+ От кого строим (наш внешний IP)
+ 
+    tunnel source 178.207.179.4
+ К кому строим (внешний IP rtr-a из таблицы 83)
+ 
+     tunnel destination 178.207.179.28
+     tunnel mode gre ip
+     
  ! Включаем OSPF на туннеле и задаем пароль (пункт 137)
  ip ospf message-digest-key 1 md5 P@ssw0rd
 exit
