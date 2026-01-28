@@ -3,7 +3,7 @@
 enable
 configure terminal
 
-1. Имя устройства (FQDN по заданию [cite: 96-97])
+*1. Имя устройства (FQDN по заданию [cite: 96-97])
 
     hostname rtr-cod
     domain-name cod.ssa2026.region
