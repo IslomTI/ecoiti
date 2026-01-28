@@ -4,9 +4,9 @@ enable
 configure terminal
 
 ! 1. [cite_start]Имя устройства (FQDN по заданию [cite: 96-97])
-# ds
- hostname rtr-cod
- domain-name cod.ssa2026.region
+
+    hostname rtr-cod
+    domain-name cod.ssa2026.region
 
 ! 2. Настройка внешнего интерфейса (к ISP)
 ! Смотрим таблицу 83: IP 178.207.179.4/29
