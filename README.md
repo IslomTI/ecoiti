@@ -734,3 +734,234 @@ exportfs -ra
 systemctl enable --now nfs-server
 
 ```
+
+# admin-cod (Admin Workstation)
+
+1 Подключение сетевого диска (NFS Client) 
+
+```bash
+apt-get update
+apt-get install nfs-clients
+mkdir -p /mnt/nfs
+
+```
+
+Настройка авто-монтирования (`/etc/fstab`)
+
+```bash
+# Добавляем строку: IP_SRV1:/path /local_path nfs _netdev 0 0
+echo "10.10.30.11:/opt/data /mnt/nfs nfs _netdev 0 0" >> /etc/fstab
+mount -a
+
+```
+
+2 Подключение к БД (DBeaver) 
+*Выполняется в графическом интерфейсе*
+
+* **Host**: 192.168.100.11 (srv2-cod)
+* **Database**: postgres
+* **User**: superadmin
+* **Password**: P@ssw0rdSQL
+
+---
+
+# dc-a (Samba AD DC)
+
+1 Подготовка
+*Установи статический IP (VLAN 100), например 192.168.100.10*
+
+```bash
+hostnamectl set-hostname dc-a.office.ssa2026.region
+# Проверь /etc/hosts: 192.168.100.10 dc-a.office.ssa2026.region dc-a
+
+```
+
+2 Установка и поднятие домена 
+
+```bash
+apt-get install samba-dc bind bind-utils
+rm -f /etc/samba/smb.conf
+
+samba-tool domain provision \
+  --realm=OFFICE.SSA2026.REGION \
+  --domain=OFFICE \
+  --adminpass=P@ssw0rd \
+  --server-role=dc \
+  --dns-backend=BIND9_DLZ
+
+```
+
+3 Интеграция с Bind
+В файл `/etc/bind/named.conf` (или options) добавь:
+
+```bash
+tkey-gssapi-keytab "/var/lib/samba/private/dns.keytab";
+# В конец файла:
+include "/var/lib/samba/bind-dns/named.conf";
+
+```
+
+Права доступа:
+
+```bash
+chgrp named /var/lib/samba/private/dns.keytab
+chmod g+r /var/lib/samba/private/dns.keytab
+
+```
+
+4 Запуск
+
+```bash
+systemctl stop smb nmb
+systemctl disable smb nmb
+systemctl unmask samba-ad-dc
+systemctl enable --now samba-ad-dc
+systemctl restart bind
+
+```
+
+5 Создание пользователей и групп 
+
+```bash
+# Подразделения
+samba-tool ou create "OU=ofadmins"
+samba-tool ou create "OU=ofusers"
+
+# Группы
+samba-tool group add ofadmins --groupou="OU=ofadmins"
+samba-tool group add ofusers --groupou="OU=ofusers"
+
+# Пользователи
+samba-tool user create ofadmin1 P@ssw0rd --userou="OU=ofadmins"
+samba-tool user create ofuser1 P@ssw0rd --userou="OU=ofusers"
+samba-tool user create user1 P@ssw0rd
+
+# Добавление в группы
+samba-tool group addmembers ofadmins ofadmin1
+samba-tool group addmembers ofusers ofuser1
+
+```
+
+---
+
+# cli1-a (Client)
+
+1 Ввод в домен 
+
+```bash
+# Указываем DNS на контроллер домена
+echo "nameserver 192.168.100.10" > /etc/resolv.conf
+
+# Ввод (используй system-auth или net ads join)
+system-auth write ad domain office.ssa2026.region computer cli1-a login administrator password P@ssw0rd
+
+# Включаем Winbind
+systemctl enable --now winbind
+
+```
+
+2 Групповые политики (ADMC) 
+*Выполняется в графике под ofadmin1*
+
+* Запустить `admc`.
+* Подключиться к домену.
+* GPO -> User Configuration -> Desktop -> Wallpaper (запретить смену, установить картинку).
+* GPO -> User Configuration -> Network -> Prohibit changes.
+
+---
+
+# Zabbix (Monitoring)
+
+**Настройка на srv1-cod** 
+
+1 Установка
+
+```bash
+apt-get install zabbix-server-pgsql zabbix-web-apache-pgsql zabbix-agent
+
+```
+
+2 Импорт БД (на удаленный srv2)
+
+```bash
+# Вводим пароль P@ssw0rdZabbix
+zcat /usr/share/doc/zabbix-server-pgsql-*/create.sql.gz | psql -h 192.168.100.11 -U zabbix_user -d zabbix
+
+```
+
+3 Конфиг `/etc/zabbix/zabbix_server.conf`
+
+```bash
+DBHost=192.168.100.11
+DBName=zabbix
+DBUser=zabbix_user
+DBPassword=P@ssw0rdZabbix
+
+```
+
+4 Настройка HTTPS (Apache)
+В конфиге `/etc/httpd2/conf/sites-available/ssl.conf`:
+
+```apache
+SSLEngine on
+SSLCertificateFile /var/ca/certs/srv1-cod.crt
+SSLCertificateKeyFile /var/ca/private/srv1-cod.key
+
+```
+
+Запуск:
+
+```bash
+systemctl enable --now httpd2 zabbix-server zabbix-agent
+
+```
+
+**Настройка Агентов (Linux Hosts)** 
+В файле `/etc/zabbix/zabbix_agentd.conf`:
+
+```bash
+Server=192.168.100.10
+ServerActive=192.168.100.10
+Hostname=<ИМЯ_ЭТОЙ_МАШИНЫ>
+
+```
+
+**Настройка SNMP (EcoRouter)** 
+
+```bash
+snmp-server community public ro
+
+```
+
+---
+
+# sip-cod (IP Telephony)
+
+*Настройка через Web-интерфейс (http://IP-SIP-COD)*
+
+1. 
+**Создать Extensions (Chan_SIP)** :
+
+
+* 1001 (admin-cod)
+* 1002 (cli-cod)
+* 2001 (cli1-a)
+* 2002 (cli2-a)
+* Secret: `P@ssw0rd`
+
+
+2. 
+**Настройка портов**:
+
+
+* Settings -> Asterisk SIP Settings.
+* **Chan SIP**: Bind Port `5060`.
+* **PJSIP**: Bind Port `5160` (или отключить).
+
+
+3. 
+**Софтфоны (на клиентах)**:
+
+
+* Установить `linphone`.
+* Вход: `1001@IP_SIP_COD`, пароль `P@ssw0rd`.
