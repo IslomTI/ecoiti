@@ -600,7 +600,10 @@ client sw1-cod {
     ipaddr = 10.10.30.11
     secret = radius_secret
 }
-
+client sw2-cod {
+    ipaddr = 10.10.30.12
+    secret = radius_secret
+}
 ```
 
 4 Добавляем пользователя netuser 
