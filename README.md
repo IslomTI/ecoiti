@@ -1,7 +1,6 @@
 ![](/1.png)
 ![](/2.png)
 ![](/3.png)
-![](/4.png)
 ```
 Название устройства    ОС
 rtr-cod	               EcoRouterOS (7-jasmine)
