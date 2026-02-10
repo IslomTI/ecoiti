@@ -492,26 +492,100 @@ systemctl restart network
 
 ## 7. 🐧 Alt Server: sw2-a (Office Access Switch)
 
-*Порты: ens4+ens5->sw1 (STP), ens6,ens7->Clients*
+Конечно. Вот полная, готовая к вставке конфигурация для **sw2-a**, расписанная от и до, без сокращений.
+
+Это **Access Switch** в офисе. Его главная задача — подключить пользователей (cli1, cli2) и обеспечить отказоустойчивость (STP) при подключении к ядру (sw1-a).
+
+---
+
+## 7. 🐧 Alt Server: sw2-a (Office Access Switch)
 
 ```bash
+# 1. Базовая настройка и отключение NetworkManager
 hostnamectl set-hostname sw2-a.office.ssa2026.region
+
+systemctl stop NetworkManager
+systemctl disable NetworkManager
+systemctl enable --now network
+
+# 2. Очистка старых конфигов
 rm -rf /etc/net/ifaces/*
-# ... (lo loopback как выше)
 
-# --- VLAN 300 (IP Switch) ---
-# Настройка ens4.300, ens5.300
-# Бридж br300, STP=on
-# Ports="ens4.300 ens5.300"
-# IP 10.10.30.12, GW 10.10.30.1
+# 3. Восстановление Loopback
+mkdir -p /etc/net/ifaces/lo
+echo "TYPE=loopback" > /etc/net/ifaces/lo/options
+echo "127.0.0.1/8" > /etc/net/ifaces/lo/ipv4address
 
-# --- VLAN 200 (Clients) ---
-# Настройка ens4.200, ens5.200
-# Бридж br200, STP=on
-# Ports="ens4.200 ens5.200 ens6 ens7"
-# (ens6, ens7 - access порты клиентов)
+# 4. Инициализация физических портов
+# Аплинки к sw1-a
+mkdir -p /etc/net/ifaces/ens4
+echo "TYPE=eth" > /etc/net/ifaces/ens4/options
+mkdir -p /etc/net/ifaces/ens5
+echo "TYPE=eth" > /etc/net/ifaces/ens5/options
 
+# Порты клиентов (cli1-a, cli2-a)
+mkdir -p /etc/net/ifaces/ens6
+echo "TYPE=eth" > /etc/net/ifaces/ens6/options
+mkdir -p /etc/net/ifaces/ens7
+echo "TYPE=eth" > /etc/net/ifaces/ens7/options
+
+# === VLAN 300 (MGMT) ===
+# Задача: Получить IP 10.10.30.12 и участвовать в STP с sw1-a.
+
+# Тег на первом линке (от sw1-a)
+mkdir -p /etc/net/ifaces/ens4.300
+echo "TYPE=vlan" > /etc/net/ifaces/ens4.300/options
+echo "VID=300" >> /etc/net/ifaces/ens4.300/options
+echo "HOST=ens4" >> /etc/net/ifaces/ens4.300/options
+
+# Тег на втором линке (от sw1-a)
+mkdir -p /etc/net/ifaces/ens5.300
+echo "TYPE=vlan" > /etc/net/ifaces/ens5.300/options
+echo "VID=300" >> /etc/net/ifaces/ens5.300/options
+echo "HOST=ens5" >> /etc/net/ifaces/ens5.300/options
+
+# Мост br300 (STP + IP)
+mkdir -p /etc/net/ifaces/br300
+echo "TYPE=bri" > /etc/net/ifaces/br300/options
+echo "STP=on" >> /etc/net/ifaces/br300/options  # Обязательно включаем STP!
+
+# Порты моста: оба аплинка
+echo "ens4.300 ens5.300" > /etc/net/ifaces/br300/ports
+
+# Настройка IP-адреса свитча
+echo "10.10.30.12/24" > /etc/net/ifaces/br300/ipv4address
+echo "default via 10.10.30.1" > /etc/net/ifaces/br300/ipv4route
+
+
+# === VLAN 200 (Clients) ===
+# Задача: Принять тегированный трафик от sw1-a и отдать нетегированный (Access) клиентам.
+
+# Тег на первом линке
+mkdir -p /etc/net/ifaces/ens4.200
+echo "TYPE=vlan" > /etc/net/ifaces/ens4.200/options
+echo "VID=200" >> /etc/net/ifaces/ens4.200/options
+echo "HOST=ens4" >> /etc/net/ifaces/ens4.200/options
+
+# Тег на втором линке
+mkdir -p /etc/net/ifaces/ens5.200
+echo "TYPE=vlan" > /etc/net/ifaces/ens5.200/options
+echo "VID=200" >> /etc/net/ifaces/ens5.200/options
+echo "HOST=ens5" >> /etc/net/ifaces/ens5.200/options
+
+# Мост br200 (STP + Access Ports)
+mkdir -p /etc/net/ifaces/br200
+echo "TYPE=bri" > /etc/net/ifaces/br200/options
+echo "STP=on" >> /etc/net/ifaces/br200/options
+
+# ВАЖНО: В портах смешиваем тегированные аплинки и обычные порты клиентов (ens6, ens7)
+echo "ens4.200 ens5.200 ens6 ens7" > /etc/net/ifaces/br200/ports
+
+# 5. Применение настроек
 systemctl restart network
+
+# 6. Проверка
+# ip a (должен быть IP 10.10.30.12 на br300)
+# brctl show (должен быть включен stp, и интерфейсы должны быть в forwarding/blocking)
 
 ```
 
